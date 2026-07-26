@@ -1,0 +1,17 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi
+uvicorn
+langchain
+langchain-community
+langchain-huggingface
+langchain-openai
+langgraph
+python-dotenv
+pydantic
+rank_bm25
+pythainlp
+ipykernel
+torch
+sentence-transformers
+faiss-cpu

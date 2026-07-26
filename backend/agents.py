@@ -1,0 +1,55 @@
+from langchain_core.messages import SystemMessage, HumanMessage
+from backend.llm_factory import get_llm
+from backend.rag_tool import search_knowledge_base
+from backend.config import settings
+
+# Prompt for Agent 2: Report Generator
+REPORT_GENERATOR_SYSTEM_PROMPT = """You are an expert Report Generator Agent and technical synthesizer.
+
+YOUR RESPONSIBILITY:
+1. Receive the user's original query AND the retrieved context snippets provided by the Data Retriever Agent.
+2. Synthesize the provided snippets into a cohesive, comprehensive, non-redundant, and beautifully formatted Markdown answer.
+3. If the snippets contain bilingual information (Thai and English), respond in the language used by the user, or provide a clear bilingual summary if appropriate.
+4. If the retrieved snippets do not contain enough information to answer the query, clearly state what information is available based on the knowledge base.
+5. Focus on clarity, accuracy based ONLY on the provided information, and professional formatting.
+"""
+
+def run_data_retriever_agent(user_query: str) -> str:
+    """
+    Agent 1 (Data Retriever Agent):
+    Specializes in retrieving specific information from the provided knowledge_base.txt.
+    Executes the custom RAG retrieval tool and returns relevant text snippets.
+    Does NOT answer the user question directly.
+    """
+    # Retrieve raw text chunks from custom RAG tool
+    retrieved_snippets = search_knowledge_base(user_query, top_k=3)
+    return retrieved_snippets
+
+def run_report_generator_agent(user_query: str, retrieved_snippets: str) -> str:
+    """
+    Agent 2 (Report Generator Agent):
+    Receives raw snippets from Agent 1 and synthesizes them into a high-quality Markdown report.
+    """
+    llm = get_llm()
+    messages = [
+        SystemMessage(content=REPORT_GENERATOR_SYSTEM_PROMPT),
+        HumanMessage(content=(
+            f"User Query: {user_query}\n\n"
+            f"Retrieved Information Snippets from Data Retriever Agent:\n{retrieved_snippets}"
+        ))
+    ]
+    
+    response = llm.invoke(messages)
+    final_report = response.content
+
+    # Clean up raw <think> tags if present
+    if "<think>" in final_report:
+        final_report = final_report.replace("<think>", "<details>\n<summary>💭 Thinking Process</summary>\n\n")
+        final_report = final_report.replace("</think>", "\n\n</details>\n\n")
+
+    # Append collapsible source snippets if SHOW_RETRIEVED_SNIPPETS is enabled
+    if settings.SHOW_RETRIEVED_SNIPPETS and retrieved_snippets:
+        sources_block = f"\n\n---\n<details>\n<summary>🔍 <b>View Retrieved Context Snippets (Agent 1 RAG Output)</b></summary>\n\n{retrieved_snippets}\n\n</details>\n"
+        final_report += sources_block
+
+    return final_report

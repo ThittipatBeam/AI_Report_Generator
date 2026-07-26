@@ -1,0 +1,36 @@
+# Open WebUI Data Volume (Contains local SQLite database, vectors, and uploads)
+open-webui-data/
+
+# Local Hugging Face / Embedding Models Cache
+models/
+
+# Python & Virtual Environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Environment & Credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Logs & Temporary Files
+*.log
+tmp/
+temp/
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
