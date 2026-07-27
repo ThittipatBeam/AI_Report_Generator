@@ -29,7 +29,6 @@ services:
     environment:
       - OPENAI_API_BASE_URL=http://agent-backend:8000/v1
       - OPENAI_API_KEY=sk-dummy-key
-      - HF_HUB_OFFLINE=1  # Prevent Open WebUI from stalling on HuggingFace downloads
     volumes:
       - ./open-webui-data:/app/backend/data
     depends_on:

@@ -54,7 +54,7 @@ To allow evaluators to immediately verify that **Agent 1 (Data Retriever)** foun
 
   ---
   <details>
-  <summary>🔍 <b>View Retrieved Context Snippets (Agent 1 RAG Output)</b></summary>
+  <summary>🔍 View Retrieved Context Snippets (Agent 1 RAG Output)</summary>
 
   > **Snippet 1 (Topic 4 - Bangkok Bank):**  
   > *"Bangkok Bank Public Company Limited was established in 1944 and was listed on the Stock Exchange of Thailand in 1975..."*
