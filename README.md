@@ -9,18 +9,18 @@
 ## 📐 System Architecture
 
 ```mermaid
-graph TD
-    User([User / Open WebUI]) -->|POST /v1/chat/completions| FastAPI[FastAPI Backend Server]
-    FastAPI -->|Invoke Workflow| LangGraph[LangGraph StateGraph Engine]
+flowchart TD
+    User["User / Open WebUI"] -->|POST /v1/chat/completions| FastAPI["FastAPI Backend Server"]
+    FastAPI -->|Invoke Workflow| LangGraph["LangGraph StateGraph Engine"]
     
-    subgraph Agentic Workflow Pipeline
-        LangGraph -->|Step 1: Retrieve Snippets| Agent1[Agent 1: Data Retriever Agent]
-        Agent1 -->|Vector Search| RAGTool[RAG Tool: FAISS + MiniLM Embeddings]
-        RAGTool -->|Read & Index| KB[(knowledge/knowledge_base.txt)]
+    subgraph Pipeline ["Agentic Workflow Pipeline"]
+        LangGraph -->|Step 1: Retrieve Snippets| Agent1["Agent 1: Data Retriever Agent"]
+        Agent1 -->|Vector Search| RAGTool["RAG Tool: FAISS + MiniLM Embeddings"]
+        RAGTool -->|Read & Index| KB[("knowledge/knowledge_base.txt")]
         RAGTool -->|Return Top Chunks| Agent1
         
-        Agent1 -->|Pass Snippets State| Agent2[Agent 2: Report Generator Agent]
-        Agent2 -->|Token Stream| LLM[LLM Provider / OpenAI Compatible]
+        Agent1 -->|Pass Snippets State| Agent2["Agent 2: Report Generator Agent"]
+        Agent2 -->|Token Stream| LLM["LLM Provider / OpenAI Compatible"]
         LLM -->|Synthesized Report| Agent2
     end
     
