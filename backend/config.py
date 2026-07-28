@@ -18,11 +18,16 @@ class Settings:
     # Custom model name displayed on Open WebUI
     DISPLAY_MODEL_NAME: str = os.getenv("DISPLAY_MODEL_NAME", "AI-Report-Generator")
 
-    # Azure OpenAI Settings
+    # Azure OpenAI Settings (Standard)
     AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT")
     AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY")
     AZURE_OPENAI_DEPLOYMENT: str = os.getenv("AZURE_OPENAI_DEPLOYMENT")
     AZURE_OPENAI_API_VERSION: str = os.getenv("AZURE_OPENAI_API_VERSION")
+
+    # Bangkok Bank APIM Azure Settings (Custom Proxy)
+    APIM_AZURE_ENDPOINT: str = os.getenv("APIM_AZURE_ENDPOINT")
+    APIM_AZURE_API_KEY: str = os.getenv("APIM_AZURE_API_KEY")
+    APIM_AZURE_MODEL: str = os.getenv("APIM_AZURE_MODEL")
 
     # Feature Toggles
     SHOW_RETRIEVED_SNIPPETS: bool = os.getenv("SHOW_RETRIEVED_SNIPPETS", "true").lower() == "true"

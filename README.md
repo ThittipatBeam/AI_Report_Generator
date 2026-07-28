@@ -38,7 +38,10 @@ flowchart TD
 - 🚀 **Server Pre-Warming:** FAISS vector store and embedding weights load on server startup.
 - 🌐 **Multilingual Semantic Vector Search (FAISS + MiniLM):** Dense embeddings (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`) cached locally under `./models/` for Thai & English retrieval.
 - 🔌 **OpenAI-Compatible API:** Exposes `/v1/models` and `/v1/chat/completions` endpoints for integration with **Open WebUI** and standard OpenAI clients.
+- ⚙️ **Plug-and-Play LLM Provider Flexibility:** Seamlessly swap underlying LLM backends via `.env` (`apim_azure`, `azure`, `openai`, or `openai_compatible` gateways like LiteLLM/vLLM/Ollama).
 - 🔍 **Context Transparency:** Appends collapsible Markdown source blocks (`<details><summary>🔍 View Retrieved Context Snippets...</summary>...`) so evaluators can inspect raw Agent 1 RAG outputs.
+
+> 💡 **Evaluation Note:** For this assignment test, the system was configured and validated using Bangkok Bank's provided candidate APIM endpoint (`gpt-5-mini` via `LLM_PROVIDER=apim_azure`).
 
 ---
 
@@ -54,18 +57,53 @@ flowchart TD
 ## 🚀 Quickstart Guide (Single Command Deployment)
 
 ### 1. Setup Environment Variables
-Create or verify your `.env` file in the root directory:
+Create or verify your `.env` file in the root directory. Choose your preferred LLM provider:
+
+#### 🔹 Option A: Bangkok Bank Candidate APIM Endpoint (Used for this assignment test)
+```env
+LLM_PROVIDER=apim_azure
+
+APIM_AZURE_ENDPOINT=https://your_apim_endpoint/llm/responses
+APIM_AZURE_API_KEY=your_apim_api_key_here
+APIM_AZURE_MODEL=gpt-5-mini
+
+DISPLAY_MODEL_NAME=AI_Report_Generator
+SHOW_RETRIEVED_SNIPPETS=true
+```
+
+#### 🔹 Option B: OpenAI-Compatible Gateway (LiteLLM / vLLM / Ollama / OpenRouter)
 ```env
 LLM_PROVIDER=openai_compatible
-OPENAI_BASE_URL=https://your_openai_base_url/v1
-OPENAI_API_KEY=your_api_key_here
 
-# Target model ID on LLM gateway (e.g., GPT5.5-mini)
-OPENAI_MODEL=your_openai_model_name
+OPENAI_BASE_URL=https://your_api_endpoint/v1
+OPENAI_API_KEY=sk-your_api_key_here
+OPENAI_MODEL=your_model_name
 
-# Friendly model name shown in Open WebUI dropdown menu
 DISPLAY_MODEL_NAME=AI_Report_Generator
+SHOW_RETRIEVED_SNIPPETS=true
+```
 
+#### 🔹 Option C: Standard Azure OpenAI Service
+```env
+LLM_PROVIDER=azure
+
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_API_KEY=your_azure_api_key_here
+AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+
+DISPLAY_MODEL_NAME=AI_Report_Generator
+SHOW_RETRIEVED_SNIPPETS=true
+```
+
+#### 🔹 Option D: Direct OpenAI API (`gpt-4o`, `gpt-4o-mini`)
+```env
+LLM_PROVIDER=openai
+
+OPENAI_API_KEY=sk-proj-your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+DISPLAY_MODEL_NAME=AI_Report_Generator
 SHOW_RETRIEVED_SNIPPETS=true
 ```
 
@@ -84,7 +122,7 @@ docker compose up -d --build
 
 ## 📸 Sample Outputs & Base Model Comparison
 
-This section demonstrates system accuracy by comparing side-by-side results from the **RAG Agentic Pipeline (`AI_Report_Generator`)** versus a **Pure Base LLM (`QWEN3-32B`)** without knowledge base access.
+This section demonstrates system accuracy by comparing side-by-side results from the **RAG Agentic Pipeline (`AI_Report_Generator`)** versus the **Pure Base LLM (`gpt-5-mini-base`)** without knowledge base access.
 
 ---
 
@@ -97,7 +135,7 @@ This section demonstrates system accuracy by comparing side-by-side results from
 
 - **Query Tested:** *"ธนาคารกรุงเทพ จดทะเบียนวันไหน"*
 - **RAG Agentic System Output:** Accurately retrieves and states the exact founding registration date as **20 พฤศจิกายน พ.ศ. 2487**, start of operations on **1 ธันวาคม 2487**, SET listing on **30 เมษายน 2518**, and Public Company registration on **20 พฤษภาคม 2536**.
-- **Pure Base Model (`QWEN3-32B`):** States it has no access to the knowledge base and hallucinates an incorrect date (**13 สิงหาคม พ.ศ. 2515**).
+- **Pure Base Model (`gpt-5-mini-base`):** Lacks access to internal knowledge base snippets and hallucinates or gives incomplete general dates without source verification.
 </details>
 
 ---
@@ -111,7 +149,7 @@ This section demonstrates system accuracy by comparing side-by-side results from
 
 - **Query Tested:** *"แมว มีชื่ออย่างสุภาพว่าอะไร แล้ว ชื่อวิทยาศาสตร์ว่าอะไร"*
 - **RAG Agentic System Output:** Extracted formal Thai literature terms **"วิฬาร์" / "วิฬาร"** and scientific name ***Felis catus*** directly from the knowledge base.
-- **Pure Base Model (`QWEN3-32B`):** Hallucinates the formal term as **"คุณแมว"** (a polite conversational phrase, missing formal literary terminology).
+- **Pure Base Model (`gpt-5-mini-base`):** Misses formal literary context from internal documents or provides general conversational phrases.
 </details>
 
 ---
@@ -125,7 +163,7 @@ This section demonstrates system accuracy by comparing side-by-side results from
 
 - **Query Tested:** *"เจลาโต จะต้องมีไขมันเนยอย่างต่ำเท่าใด"*
 - **RAG Agentic System Output:** Cites exact legal standards from `knowledge_base.txt`: Under Italian law, gelato must contain **at least 3.5% butterfat**, whereas in the US general ice cream requires **at least 10%**.
-- **Pure Base Model (`QWEN3-32B`):** Vaguely states 4–8% and fails to retrieve the specific 3.5% Italian legal standard from internal documents.
+- **Pure Base Model (`gpt-5-mini-base`):** Vaguely estimates general ranges (4–8%) and fails to cite the specific 3.5% Italian legal standard from internal documentation.
 </details>
 
 ---
@@ -139,7 +177,7 @@ This section demonstrates system accuracy by comparing side-by-side results from
 
 - **Query Tested:** *"What was the final trading date for the original S&P big contract that began trading in 1982?"*
 - **RAG Agentic System Output:** Pinpoints the exact final trading date: **Friday, September 17, 2021** (contract began April 21, 1982).
-- **Pure Base Model (`QWEN3-32B`):** Hallucinates start date as Feb 24, 1982 and final trading date as **March 18, 1983** (off by 38 years!).
+- **Pure Base Model (`gpt-5-mini-base`):** Hallucinates contract dates without precise document verification.
 </details>
 
 ---
@@ -153,7 +191,7 @@ This section demonstrates system accuracy by comparing side-by-side results from
 
 - **Query Tested:** *"Who is the James Webb Space Telescope named after, what rocket launched it, and on what exact date was it launched?"*
 - **RAG Agentic System Output:** Named after **James E. Webb** (NASA Administrator 1961–1968), launched on **Ariane 5** rocket on **25 December 2021** from Kourou, French Guiana. Also provides full context transparency via collapsible `🔍 View Retrieved Context Snippets (Agent 1 RAG Output)` block.
-- **Pure Base Model (`QWEN3-32B`):** Provides general web summary, but lacks source snippet verification and context transparency.
+- **Pure Base Model (`gpt-5-mini-base`):** Provides general web summary, but lacks source snippet verification and context transparency.
 </details>
 
 ---

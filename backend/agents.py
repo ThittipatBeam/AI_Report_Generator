@@ -21,8 +21,8 @@ def run_data_retriever_agent(user_query: str) -> str:
     Executes the custom RAG retrieval tool and returns relevant text snippets.
     Does NOT answer the user question directly.
     """
-    # Retrieve raw text chunks from custom RAG tool
-    retrieved_snippets = search_knowledge_base(user_query, top_k=3)
+    # Retrieve raw text chunks from custom RAG tool (top_k=2 to conserve candidate token quota)
+    retrieved_snippets = search_knowledge_base(user_query, top_k=2)
     return retrieved_snippets
 
 def run_report_generator_agent(user_query: str, retrieved_snippets: str) -> str:

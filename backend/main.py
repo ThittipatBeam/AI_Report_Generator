@@ -37,12 +37,18 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.7
     stream: Optional[bool] = False
 
+from backend.llm_factory import get_llm
+from langchain_core.messages import HumanMessage
+
+BASE_MODEL_NAME = "gpt-5-mini-base"
+
 @app.get("/")
 def read_root():
     return {
         "status": "online",
         "service": "Agentic AI Report Generator API",
         "display_model": settings.DISPLAY_MODEL_NAME,
+        "base_model": BASE_MODEL_NAME,
         "target_model": settings.OPENAI_MODEL,
         "llm_provider": settings.LLM_PROVIDER,
         "base_url": settings.OPENAI_BASE_URL
@@ -52,7 +58,9 @@ def read_root():
 def list_models():
     """
     OpenAI-compatible models list endpoint for Open WebUI discovery.
+    Exposes both RAG Agentic System and Pure Base LLM for side-by-side comparison.
     """
+    now = int(time.time())
     display_id = settings.DISPLAY_MODEL_NAME
     return {
         "object": "list",
@@ -60,14 +68,71 @@ def list_models():
             {
                 "id": display_id,
                 "object": "model",
-                "created": int(time.time()),
+                "created": now,
                 "owned_by": "bbl-agent-team",
                 "permission": [],
                 "root": display_id,
                 "parent": None
+            },
+            {
+                "id": BASE_MODEL_NAME,
+                "object": "model",
+                "created": now,
+                "owned_by": "bbl-agent-team",
+                "permission": [],
+                "root": BASE_MODEL_NAME,
+                "parent": None
             }
         ]
     }
+
+async def generate_stream_base_response(user_query: str, request_model: str) -> AsyncGenerator[str, None]:
+    """
+    Streams responses directly from the underlying LLM (without Agent 1 RAG context retrieval).
+    """
+    chat_id = f"chatcmpl-{int(time.time())}"
+    llm = get_llm()
+    messages = [HumanMessage(content=user_query)]
+    try:
+        async for chunk in llm.astream(messages):
+            if chunk.content:
+                payload = {
+                    "id": chat_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": request_model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": chunk.content},
+                            "finish_reason": None
+                        }
+                    ]
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        stop_payload = {
+            "id": chat_id,
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": request_model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop"
+                }
+            ]
+        }
+        yield f"data: {json.dumps(stop_payload)}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        print(f"Error executing Base LLM response: {e}")
+        error_payload = {
+            "error": {"message": str(e), "type": "server_error"}
+        }
+        yield f"data: {json.dumps(error_payload)}\n\n"
+        yield "data: [DONE]\n\n"
 
 async def generate_stream_agent_response(user_query: str, request_model: str) -> AsyncGenerator[str, None]:
     """
@@ -141,7 +206,9 @@ async def generate_stream_agent_response(user_query: str, request_model: str) ->
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
     """
-    OpenAI-compatible chat completions endpoint that invokes the LangGraph 2-Agent Pipeline!
+    OpenAI-compatible chat completions endpoint routing to either:
+    1. AI_Report_Generator (LangGraph 2-Agent RAG Pipeline)
+    2. gpt-5-mini-base (Direct LLM without RAG context)
     """
     user_query = ""
     for msg in reversed(request.messages):
@@ -154,14 +221,44 @@ async def chat_completions(request: ChatCompletionRequest):
 
     request_model = request.model or settings.DISPLAY_MODEL_NAME
 
-    # Stream response to Open WebUI
+    # Route: Base LLM without RAG context
+    if request_model == BASE_MODEL_NAME:
+        if request.stream:
+            return StreamingResponse(
+                generate_stream_base_response(user_query, request_model),
+                media_type="text/event-stream"
+            )
+        else:
+            try:
+                llm = get_llm()
+                res = await llm.ainvoke([HumanMessage(content=user_query)])
+                return {
+                    "id": f"chatcmpl-{int(time.time())}",
+                    "object": "chat.completion",
+                    "created": int(time.time()),
+                    "model": request_model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {
+                                "role": "assistant",
+                                "content": res.content
+                            },
+                            "finish_reason": "stop"
+                        }
+                    ]
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Base LLM Error: {str(e)}")
+
+    # Route: Full LangGraph RAG Agent Pipeline
     if request.stream:
         return StreamingResponse(
             generate_stream_agent_response(user_query, request_model),
             media_type="text/event-stream"
         )
 
-    # Non-streaming response
+    # Non-streaming RAG Agent Pipeline
     try:
         final_report = run_agentic_rag_pipeline(user_query)
         return {
